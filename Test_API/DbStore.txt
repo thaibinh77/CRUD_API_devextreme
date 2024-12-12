@@ -1,0 +1,355 @@
+﻿CREATE DATABASE DbTest
+GO
+IF EXISTS (SELECT name FROM master.dbo.sysdatabases WHERE name = 'DbTest')
+BEGIN
+    DROP DATABASE DbTest;
+END
+
+USE DbTest
+
+CREATE TABLE CUSTOMER
+(
+	customerId INT IDENTITY(1,1) PRIMARY KEY,
+	fullName NVARCHAR(100) NOT NULL,
+	Email NVARCHAR(100) NOT NULL,
+	Pass VARCHAR(100) NOT NULL,
+	DateOfBirth DATETIME NOT NULL,
+);
+
+CREATE TABLE PRODUCT
+(
+	productId INT IDENTITY(1,1) PRIMARY KEY,
+	productName NVARCHAR(MAX) NOT NULL,
+	imgLink NVARCHAR(MAX) NOT NULL,
+	productDescription NVARCHAR(MAX) NOT NULL,
+	price DEC(18,3) NOT NULL,
+);
+
+CREATE TABLE CATEGORY
+(
+	categoryId INT IDENTITY(1,1) PRIMARY KEY,
+	categoryName NVARCHAR(MAX) NOT NULL,
+	imgLink NVARCHAR(MAX) NOT NULL,
+	categoryDescription NVARCHAR(MAX) NOT NULL,
+);
+
+CREATE TABLE USER_ORDER
+(
+	orderId INT IDENTITY(1,1) PRIMARY KEY,
+	customerId INT NOT NULL,
+	productId INT NOT NULL,
+	quantity INT NOT NULL,
+	price DEC(18,3) NOT NULL,
+	totalPrice AS price * quantity,
+);
+
+
+-- Thêm dữ liệu vào bảng CUSTOMER
+SET IDENTITY_INSERT CUSTOMER ON
+INSERT INTO CUSTOMER (customerId, fullName, Email, Pass, DateOfBirth) VALUES
+(1, N'Nguyễn Văn A', 'nguyenvana@gmail.com', '1234', '1990-01-01'),
+(2, N'Trần Thị B', 'tranthib@gmail.com', '5678', '1995-05-05'),
+(3, N'Lê Văn C', 'levanc@gmail.com', '1357', '1988-03-15');
+GO
+SET IDENTITY_INSERT CUSTOMER OFF
+
+
+-- Thêm dữ liệu vào bảng PRODUCT
+SET IDENTITY_INSERT PRODUCT ON
+INSERT INTO PRODUCT (productId, productName, imgLink, productDescription, price) VALUES
+(1, N'Quần tây nam', 'https://product.hstatic.net/1000096703/product/hma00117_85eaac1325cf492ca3953a7f1efed089_master.jpg', 
+ N'Quần tây nam chất liệu cao cấp, thoáng mát, mang lại cảm giác thoải mái suốt ngày dài. 
+ Thiết kế ôm vừa vặn, giúp người mặc tôn dáng. Phù hợp cho môi trường công sở hoặc những dịp trang trọng.', 
+ 100.000),
+ 
+(2, N'Áo sơ mi kiểu nữ', 'https://caravnxk.com/admin/sanpham/so-mi-nu-xuat-du_1695_anh1.jpg', 
+ N'Áo sơ mi nữ thời trang, kiểu dáng thanh lịch kết hợp với chất liệu vải mềm mại, thoải mái khi mặc. 
+ Áo có thể phối với nhiều trang phục khác nhau, phù hợp để đi làm, đi chơi hoặc gặp gỡ bạn bè.', 
+ 200.500),
+ 
+(3, N'Đầm trắng nữ', 'https://cf.shopee.vn/file/f97244e619c5a9952ad742f65a7743f6', 
+ N'Đầm trắng nữ kiểu dáng trẻ trung và tinh tế. Với thiết kế đơn giản nhưng đầy thu hút, đầm mang lại vẻ đẹp nhẹ nhàng, 
+ nữ tính. Chất liệu vải cao cấp đảm bảo sự mềm mại và thoáng mát trong suốt quá trình sử dụng.', 
+ 300.250);
+GO
+SET IDENTITY_INSERT PRODUCT OFF
+
+
+
+-- Thêm dữ liệu vào bảng USER_ORDER
+SET IDENTITY_INSERT USER_ORDER ON
+INSERT INTO USER_ORDER (orderId, customerId, productId, quantity, price) VALUES
+(1, 1, 1, 2, 100.000),
+(2, 2, 2, 1, 200.500),
+(3, 3, 3, 3, 300.250);
+SET IDENTITY_INSERT USER_ORDER OFF
+
+
+
+select * from CUSTOMER
+select * from PRODUCT
+select * from USER_ORDER
+
+
+
+--delete from PROGRAM where programId = 0
+--delete from IMG where programId = 0
+
+
+
+-------------------PROCEDURE-----------------
+----------PRODUCT-------------
+---get all product---
+GO
+CREATE PROCEDURE sp_GetAllProduct
+AS
+BEGIN
+    SELECT * FROM PRODUCT;
+END;
+
+EXEC sp_GetAllProduct;
+
+DROP PROCEDURE sp_GetAllProduct;
+GO
+
+
+---get all product by name---
+GO
+CREATE PROCEDURE sp_GetProductByName
+@productName NVARCHAR(MAX)
+AS
+BEGIN
+	---Kiểm tra sản phẩm có tồn tại không
+    IF EXISTS (SELECT 1 FROM PRODUCT WHERE productName LIKE '%' + @productName + '%')
+    BEGIN
+        SELECT * FROM PRODUCT WHERE productName LIKE '%' + @productName + '%'
+    END
+    ELSE
+    BEGIN
+        ---Nếu sản phẩm tồn tại
+        PRINT 'Product not found';
+    END
+END;
+
+EXEC sp_GetProductByName N'quần';
+
+DROP PROCEDURE sp_GetProductByName;
+GO
+
+
+---get product by id---
+GO
+CREATE PROCEDURE sp_GetProductById
+@productId INT
+AS
+BEGIN
+	---Kiểm tra sản phẩm có tồn tại không
+    IF EXISTS (SELECT 1 FROM PRODUCT WHERE productId = @productId)
+    BEGIN
+        SELECT * FROM PRODUCT WHERE productId = @productId
+    END
+    ELSE
+    BEGIN
+        ---Nếu sản phẩm tồn tại
+        PRINT 'Product not found';
+    END
+END;
+
+EXEC sp_GetProductById 1;
+
+DROP PROCEDURE sp_GetProductById;
+GO
+
+
+---insert product---
+GO
+CREATE PROCEDURE sp_InsertProduct
+	@productName NVARCHAR(MAX),
+	@imgLink NVARCHAR(MAX),
+	@productDescription NVARCHAR(MAX),
+	@price DEC(18,3)
+AS
+BEGIN
+	---Kiểm tra sản phẩm có tồn tại không
+    IF NOT EXISTS (SELECT 1 FROM PRODUCT WHERE productName = @productName)
+    BEGIN
+        ---Thêm sản phẩm
+        INSERT INTO PRODUCT (productName, imgLink, productDescription, price) VALUES
+		(@productName, @imgLink, @productDescription, @price);
+
+		EXEC sp_GetProductByName @productName;
+    END
+    ELSE
+    BEGIN
+        ---Nếu sản phẩm tồn tại
+        PRINT 'Product already exists';
+    END
+END;
+
+EXEC sp_InsertProduct 
+	N'quần short nam', 
+	'https://bizweb.dktcdn.net/thumb/1024x1024/100/460/639/products/z4433936132052-c5d0ead1b0f0a85144dd2805611b86c5-min.jpg?v=1686888784147', 
+	N'Quần short nam được làm từ chất liệu vải mềm mại, thoáng khí, mang đến cảm giác thoải mái khi mặc. Thiết kế trẻ trung, năng động, phù hợp với nhiều phong cách khác nhau. Quần có nhiều kích cỡ để bạn lựa chọn.', 
+    350.000
+
+SELECT * FROM PRODUCT
+
+DROP PROCEDURE sp_InsertProduct;
+GO
+delete PRODUCT where productId = 17
+
+---update product---
+GO
+CREATE PROCEDURE sp_UpdateProduct
+	@productId INT,
+	@productName NVARCHAR(MAX),
+	@imgLink NVARCHAR(MAX),
+	@productDescription NVARCHAR(MAX),
+	@price DEC(18,3)
+AS
+BEGIN
+	-- Kiểm tra sản phẩm có tồn tại không
+    IF EXISTS (SELECT 1 FROM PRODUCT WHERE productId = @productId)
+    BEGIN
+        -- Cập nhật sản phẩm nếu có thay đổi
+        UPDATE PRODUCT
+        SET 
+            productName = @productName,
+            imgLink = @imgLink,
+            productDescription = @productDescription,
+            price = @price
+        WHERE productId = @productId
+
+		EXEC sp_GetProductByName @productName;
+    END
+    ELSE
+    BEGIN
+        -- Nếu sản phẩm không tồn tại
+        PRINT 'Product not found';
+    END
+END;
+
+EXEC sp_UpdateProduct 
+	5,
+	N'Quần short nam', 
+	'https://bizweb.dktcdn.net/thumb/1024x1024/100/460/639/products/z4433936132052-c5d0ead1b0f0a85144dd2805611b86c5-min.jpg?v=1686888784147', 
+	N'Quần short nam được làm từ chất liệu vải mềm mại, thoáng khí, mang đến cảm giác thoải mái khi mặc. Thiết kế trẻ trung, năng động, phù hợp với nhiều phong cách khác nhau. Quần có nhiều kích cỡ để bạn lựa chọn.', 
+    350.000;
+
+SELECT * FROM PRODUCT
+
+DROP PROCEDURE sp_UpdateProduct;
+GO
+
+
+---delete product---
+GO
+CREATE PROCEDURE sp_DeleteProduct
+	@productId INT
+AS
+BEGIN
+	-- Kiểm tra sản phẩm có tồn tại không
+    IF EXISTS (SELECT 1 FROM PRODUCT WHERE productId = @productId)
+    BEGIN
+        -- Cập nhật sản phẩm chỉ nếu có thay đổi
+        DELETE FROM PRODUCT
+        WHERE productId = @productId
+    END
+    ELSE
+    BEGIN
+        -- Nếu sản phẩm không tồn tại
+        PRINT 'Product not found';
+    END
+END;
+
+EXEC sp_DeleteProduct 5;
+
+SELECT * FROM PRODUCT
+
+DROP PROCEDURE sp_DeleteProduct;
+GO
+----------CUSTOMER-------------
+---get all customer---
+GO
+CREATE PROCEDURE sp_GetAllCustomer
+AS
+BEGIN
+    SELECT * FROM CUSTOMER;
+END;
+
+EXEC sp_GetAllCustomer;
+
+DROP PROCEDURE sp_GetAllCustomer;
+GO
+
+
+---update customer---
+GO
+CREATE PROCEDURE sp_UpdateCustomer
+	@productId INT,
+	@productName NVARCHAR(MAX),
+	@imgLink NVARCHAR(MAX),
+	@productDescription NVARCHAR(MAX),
+	@price DEC(18,3)
+AS
+BEGIN
+	-- Kiểm tra sản phẩm có tồn tại không
+    IF EXISTS (SELECT 1 FROM PRODUCT WHERE productId = @productId)
+    BEGIN
+        -- Cập nhật sản phẩm chỉ nếu có thay đổi
+        UPDATE PRODUCT
+        SET 
+            productName = @productName,
+            imgLink = @imgLink,
+            productDescription = @productDescription,
+            price = @price
+        WHERE productId = @productId
+    END
+    ELSE
+    BEGIN
+        -- Nếu sản phẩm không tồn tại
+        PRINT 'Product not found';
+    END
+END;
+
+EXEC sp_UpdateProduct 
+	10,
+	N'Quần short nam', 
+	'https://bizweb.dktcdn.net/thumb/1024x1024/100/460/639/products/z4433936132052-c5d0ead1b0f0a85144dd2805611b86c5-min.jpg?v=1686888784147', 
+	N'Quần short nam được làm từ chất liệu vải mềm mại, thoáng khí, mang đến cảm giác thoải mái khi mặc. Thiết kế trẻ trung, năng động, phù hợp với nhiều phong cách khác nhau. Quần có nhiều kích cỡ để bạn lựa chọn.', 
+    350.000;
+
+SELECT * FROM PRODUCT
+
+DROP PROCEDURE sp_UpdateProduct;
+GO
+
+
+----------ORDER-------------
+---get all order---
+GO
+CREATE PROCEDURE sp_GetAllOrder
+AS
+BEGIN
+    SELECT * FROM USER_ORDER;
+END;
+
+EXEC sp_GetAllOrder;
+
+DROP PROCEDURE sp_GetAllOrder;
+GO
+
+
+---get all product by name---
+GO
+CREATE PROCEDURE sp_GetProductByName
+@productName NVARCHAR(MAX)
+AS
+BEGIN
+	SELECT * FROM PRODUCT WHERE productName LIKE '%' + @productName + '%'
+END;
+
+EXEC sp_GetProductByName N'quần';
+
+DROP PROCEDURE sp_GetProductByName;
+GO
